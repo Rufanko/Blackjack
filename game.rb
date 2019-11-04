@@ -7,6 +7,7 @@ require_relative 'hand.rb'
 require_relative 'deck.rb'
 require_relative 'interface'
 require_relative 'validation'
+require_relative 'dealer'
 class Game
   attr_reader :player, :bank, :interface, :deck, :dealer
   def initialize(interface)
@@ -15,7 +16,7 @@ class Game
     name = @interface.greetings_text
     @player = Player.new(name)
 
-    @dealer = Player.new('Dealer')
+    @dealer = Dealer.new('Dealer')
     @deck = Deck.new
   end
 
@@ -43,7 +44,7 @@ class Game
     @dealer.hand.desolate
     2.times { @player.take(@deck) }
     2.times { @dealer.take(@deck) }
-    @interface.player_cards(@player)
+    # @interface.player_cards(@player)
     @interface.new_round(@player)
   end
 
@@ -55,32 +56,57 @@ class Game
     @dealer.hand.score > 17 && @player.hand.score < 21
   end
 
+  def player_overflowed
+    @player.hand.score > 21
+  end
+
+  def dealer_overflowed
+    @dealer.hand.score > 21
+  end
+
+  def dealer_has_higher_score
+    @dealer.hand.score > @player.hand.score
+  end
+
+  def player_has_higher_score
+    @player.hand.score > @dealer.hand.score
+  end
+
+  def equal_scores
+    @player.hand.score == @dealer.hand.score
+  end
+
+  def black_jack(player)
+    player.hand.score == 21
+  end
+
   def winner
-    return 'dealer' if @player.hand.score > 21 || (@dealer.hand.score > @player.hand.score) && @dealer.hand.score < 21 || (@dealer.hand.score == 21 && @player.hand.score != 21)
-    return 'player' if (@player.hand.score > @dealer.hand.score && @player.hand.score <= 21) || @player.hand.score <= 21 && @dealer.hand.score > 21
-    return 'draw' if @player.hand.score == @dealer.hand.score
+    return 'dealer' if player_overflowed || (dealer_has_higher_score && !dealer_overflowed) || (black_jack(@dealer) && !black_jack(@player))
+    return 'player' if player_has_higher_score || (player_has_higher_score && player_overflowed && dealer_overflowed) || !player_overflowed && dealer_overflowed || black_jack(@player)
+    return 'draw' if equal_scores
   end
 
   def players_turn
     loop do
       @player.hand.count
       @interface.player_score(@player)
-      @interface.players_move_text
-      uses_string = gets.chomp!
-      case uses_string
+      case @interface.players_move_text
+
       when '1'
 
         @player.take(@deck)
         @interface.player_cards(@player)
         card_counter = 3
-        break if player_stop
+        @player.hand.count
+        @interface.count(@player)
 
+        break
       when '2'
         break
+
       end
       @player.hand.players_deck
       @player.hand.score
-
       @bank.player_bank
     end
   end
@@ -88,16 +114,15 @@ class Game
   def dealers_turn
     @dealer&.hand.count
 
-    puts 'Дилер ходит...'
     loop do
+      @interface.dealers_move
+      break unless @dealer.should_take?
+      break if player_overflowed
+
       card_counter = 3
-      break if dealer_stop
 
       @dealer.take(@deck)
       @dealer&.hand.count
-
-      puts '***'
-      puts @dealer.hand.score
       break if card_counter == 3
     end
   end
@@ -105,18 +130,21 @@ class Game
   def winner_message
     case winner
     when 'dealer'
-      puts 'Вы проиграли. Деньги уходят дилеру.'
-      puts "Количество очков дилера #{@dealer.hand.score}"
-      puts 'Карты дилера'
-      @interface.player_cards(@dealer)
-      @bank.give_money_dealer
+      @interface.winner_dealer(@dealer, @bank)
+
     when 'player'
-      puts 'Вы выиграли! Поздравляем!'
-      @bank.give_money_player
+      @interface.winner_player(@dealer, @bank)
+
     when 'draw'
-      puts 'Ничья...'
-      @bank.draw
+      @interface.draw(@dealer, @bank)
     end
+  end
+
+  def open_cards
+    @interface.player_cards(@player)
+    @interface.player_cards(@dealer)
+    @interface.player_score(@player)
+    @interface.dealer_score(@dealer)
   end
 
   def play_again
@@ -124,9 +152,7 @@ class Game
     return false if @bank.enough_money
 
     loop do
-      puts "Сыграем еще?\n1.Да\n2.Нет"
-      uses_string = gets.chomp
-      case uses_string
+      case @interface.another_game
       when '1'
         return true
         break

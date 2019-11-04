@@ -14,6 +14,31 @@ class Interface
     name = gets.chomp!
   end
 
+  def draw(dealer, bank)
+    puts 'Ничья...'
+    puts "Количество очков дилера #{dealer.hand.score}"
+    puts 'Карты дилера'
+    player_cards(dealer)
+    bank.draw
+  end
+
+  def winner_dealer(dealer, bank)
+    puts 'Вы проиграли. Деньги уходят дилеру.'
+    puts "Количество очков дилера #{dealer.hand.score}"
+    puts 'Карты дилера'
+    player_cards(dealer)
+    bank.give_money_dealer
+  end
+
+  def winner_player(dealer, bank)
+    puts 'Вы выиграли! Поздравляем!'
+    puts "Количество очков дилера #{dealer.hand.score}"
+    puts 'карты дилера'
+    # dealer.hand.players_deck.each { |x| print "#{x.rank} #{x.suit}\n" })
+    player_cards(dealer)
+    bank.give_money_player
+  end
+
   def greetings_text2(player)
     puts "#{player.name}, игра начинается"
   end
@@ -27,9 +52,14 @@ class Interface
     puts "Вы проиграли. На счету осталось #{bank.player_bank}$"
   end
 
+  def count(player)
+    puts " У вас #{player.hand.score} очков "
+  end
+
   def players_move_text
     puts '1.Взять карту'
     puts '2.Пропустить ход'
+    uses_string = gets.chomp!
   end
 
   def dealer_win_text(bank)
@@ -38,6 +68,16 @@ class Interface
 
   def draw_text
     puts 'Ничья...'
+  end
+
+  def another_game
+    puts "Сыграем еще?\n1.Да\n2.Нет"
+    uses_string = gets.chomp
+   end
+
+  def dealers_move
+    puts 'Дилер ходит...'
+    puts 'Карты дилера ***'
   end
 
   def another_game_text(bank)
@@ -61,5 +101,9 @@ class Interface
 
   def player_score(player)
     puts "У вас #{player.hand.score} очков"
+  end
+
+  def dealer_score(dealer)
+    puts "У дилера #{dealer.hand.score} очков"
   end
 end
